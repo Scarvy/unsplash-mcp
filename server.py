@@ -14,14 +14,40 @@ from fastmcp import FastMCP
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from auth import DenyAllVerifier, WorkspaceGoogleProvider
+
 # Load environment variables
 load_dotenv()
 
 # Unsplash API base URL
 UNSPLASH_API_BASE = "https://api.unsplash.com"
 
-# Create the MCP server
-mcp = FastMCP("Unsplash MCP Server")
+
+def _build_auth() -> DenyAllVerifier | WorkspaceGoogleProvider:
+    """Require complete OAuth settings for hosted access; otherwise deny HTTP."""
+    client_id = os.getenv("UNSPLASH_MCP_GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("UNSPLASH_MCP_GOOGLE_CLIENT_SECRET")
+    public_url = os.getenv("UNSPLASH_MCP_PUBLIC_URL")
+    allowed_domain = os.getenv("UNSPLASH_MCP_ALLOWED_DOMAIN")
+
+    if client_id and client_secret and public_url and allowed_domain:
+        return WorkspaceGoogleProvider(
+            client_id=client_id,
+            client_secret=client_secret,
+            base_url=public_url.rstrip("/"),
+            domain=allowed_domain,
+        )
+    if any((client_id, client_secret, public_url, allowed_domain)):
+        raise RuntimeError(
+            "Set UNSPLASH_MCP_GOOGLE_CLIENT_ID, "
+            "UNSPLASH_MCP_GOOGLE_CLIENT_SECRET, UNSPLASH_MCP_PUBLIC_URL, "
+            "and UNSPLASH_MCP_ALLOWED_DOMAIN together"
+        )
+    return DenyAllVerifier()
+
+
+# Stdio remains available locally. HTTP refuses all requests until OAuth is set.
+mcp = FastMCP("Unsplash MCP Server", auth=_build_auth())
 
 
 @mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)

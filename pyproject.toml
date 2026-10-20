@@ -5,8 +5,10 @@ description = "MCP server for fetching Unsplash photos with proper attribution"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastmcp>=2.2.0",
+    "fastmcp>=4.1.2",
+    "google-auth[requests]>=2.40.0",
     "httpx>=0.26.0",
+    "mcp>=2.3.0",
     "python-dotenv>=1.1.0",
     "starlette>=0.46.0",
 ]

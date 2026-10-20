@@ -26,27 +26,24 @@ Photo by <a href="https://unsplash.com/@johndoe">John Doe</a> on <a href="https:
 ### Prerequisites
 
 - Python 3.11+
+- [uv](https://docs.astral.sh/uv/)
 - An Unsplash API access key ([Get one here](https://unsplash.com/developers))
 
 ### Quick Start
 
 ```bash
 # Clone the repository
-git clone https://github.com/cevatkerim/unsplash-mcp.git
+git clone https://github.com/Scarvy/unsplash-mcp.git
 cd unsplash-mcp
 
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
 # Install dependencies
-pip install fastmcp httpx python-dotenv
+uv sync --frozen
 
 # Set your API key
 echo "UNSPLASH_ACCESS_KEY=your_key_here" > .env
 
 # Run the server
-fastmcp run server.py
+uv run --frozen --no-sync fastmcp run server.py
 ```
 
 ### Local HTTP endpoint
@@ -54,29 +51,53 @@ fastmcp run server.py
 For clients that connect to a remote MCP URL, start the Streamable HTTP transport:
 
 ```bash
-fastmcp run server.py --transport http --host 127.0.0.1 --port 8000
+uv run --frozen --no-sync fastmcp run server.py --transport http --host 127.0.0.1 --port 8000
 ```
 
-The MCP endpoint is `http://127.0.0.1:8000/mcp`. The server uses the
-`UNSPLASH_ACCESS_KEY` from `.env` locally. To check the endpoint with an MCP
-client, connect to that URL and list the tools; it should expose
-`search_photos`, `get_random_photos`, and `track_download`.
+The MCP endpoint is `http://127.0.0.1:8000/mcp`. It returns HTTP 401 until
+Google OAuth is configured. Local stdio clients can still use the tools with
+`UNSPLASH_ACCESS_KEY` from `.env`.
 
-For a Render web service, set `UNSPLASH_ACCESS_KEY` as a secret environment
-variable and use this start command so the service binds to Render's assigned
-port:
+### Render deployment with Google Workspace access
+
+1. In Google Cloud, configure the OAuth consent screen for **Internal** users
+   of your Workspace. Create a **Web application** OAuth client and add
+   `https://<your-service>.onrender.com/auth/callback` as an authorized redirect
+   URI. The account creating the OAuth client must be able to configure your
+   Workspace project.
+2. Create a Render **Web Service** from this repository. Use this build command:
+
+   ```bash
+   uv sync --frozen && uv cache prune --ci
+   ```
+
+3. Set the following Render environment variables:
+
+   | Name | Value |
+   |------|-------|
+   | `UNSPLASH_ACCESS_KEY` | Your Unsplash API access key |
+   | `UNSPLASH_MCP_GOOGLE_CLIENT_ID` | Google Web application OAuth client ID |
+   | `UNSPLASH_MCP_GOOGLE_CLIENT_SECRET` | Google OAuth client secret (secret variable) |
+   | `UNSPLASH_MCP_PUBLIC_URL` | `https://<your-service>.onrender.com` (no `/mcp`) |
+   | `UNSPLASH_MCP_ALLOWED_DOMAIN` | Your Workspace domain, without `@` (required) |
+
+4. Use this Render start command:
 
 ```bash
-fastmcp run server.py --transport http --host 0.0.0.0 --port "$PORT"
+uv run --frozen --no-sync fastmcp run server.py --transport http --host 0.0.0.0 --port "$PORT"
 ```
 
-The deployed endpoint will be `https://<your-service>.onrender.com/mcp`.
-Set Render's **Health Check Path** to `/healthz`. A successful check returns
-HTTP 200 with `{"status":"ok"}`. This checks that the server is running; it
-does not make an Unsplash API request or consume API quota.
-Configure access control before publishing that URL: this server currently
-accepts MCP requests without authentication, and every caller uses the same
-Unsplash API key and rate limit.
+Set Render's **Health Check Path** to `/healthz`. It remains public and returns
+HTTP 200 with `{"status":"ok"}` without using Unsplash API quota. The deployed
+MCP endpoint is `https://<your-service>.onrender.com/mcp`. HTTP access requires
+Google sign-in. The server verifies the signed Google ID token's `hd` claim,
+verified email, and domain before granting access. If any OAuth setting is
+missing, startup fails; if all are absent, the HTTP endpoint rejects all MCP
+requests.
+
+All signed-in users share the configured Unsplash API key and its rate limit.
+Render's filesystem is ephemeral, so connected clients may need to sign in
+again after a redeploy.
 
 After deployment, HTTP clients can add the endpoint, for example:
 
