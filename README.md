@@ -49,6 +49,39 @@ echo "UNSPLASH_ACCESS_KEY=your_key_here" > .env
 fastmcp run server.py
 ```
 
+### Local HTTP endpoint
+
+For clients that connect to a remote MCP URL, start the Streamable HTTP transport:
+
+```bash
+fastmcp run server.py --transport http --host 127.0.0.1 --port 8000
+```
+
+The MCP endpoint is `http://127.0.0.1:8000/mcp`. The server uses the
+`UNSPLASH_ACCESS_KEY` from `.env` locally. To check the endpoint with an MCP
+client, connect to that URL and list the tools; it should expose
+`search_photos`, `get_random_photos`, and `track_download`.
+
+For a Render web service, set `UNSPLASH_ACCESS_KEY` as a secret environment
+variable and use this start command so the service binds to Render's assigned
+port:
+
+```bash
+fastmcp run server.py --transport http --host 0.0.0.0 --port "$PORT"
+```
+
+The deployed endpoint will be `https://<your-service>.onrender.com/mcp`.
+Configure access control before publishing that URL: this server currently
+accepts MCP requests without authentication, and every caller uses the same
+Unsplash API key and rate limit.
+
+After deployment, HTTP clients can add the endpoint, for example:
+
+```bash
+claude mcp add --transport http unsplash https://<your-service>.onrender.com/mcp
+codex mcp add unsplash --url https://<your-service>.onrender.com/mcp
+```
+
 ## Configuration
 
 ### Claude Code
@@ -173,22 +206,20 @@ Each photo includes:
         "full": "https://images.unsplash.com/...",
         "regular": "https://images.unsplash.com/...",  # Recommended for web
         "small": "https://images.unsplash.com/...",
-        "thumb": "https://images.unsplash.com/..."
+        "thumb": "https://images.unsplash.com/...",
     },
     "width": 4000,
     "height": 3000,
     "color": "#a3c4f3",  # Dominant color for placeholders
     "blur_hash": "LKO2?U%2Tw=w...",  # For progressive loading
-
     # Attribution (REQUIRED when using the image)
     "photographer_name": "John Doe",
     "photographer_username": "johndoe",
     "photographer_url": "https://unsplash.com/@johndoe?utm_source=...",
     "photo_url": "https://unsplash.com/photos/abc123?utm_source=...",
-
     # Ready-to-use attribution
     "attribution_text": "Photo by John Doe on Unsplash",
-    "attribution_html": "Photo by <a href=\"...\">John Doe</a> on <a href=\"...\">Unsplash</a>"
+    "attribution_html": 'Photo by <a href="...">John Doe</a> on <a href="...">Unsplash</a>',
 }
 ```
 

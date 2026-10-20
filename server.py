@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 Unsplash MCP Server
 
@@ -8,7 +7,6 @@ Designed for LLMs building content pages that need properly credited images.
 
 import os
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Union
 
 import httpx
 from dotenv import load_dotenv
@@ -32,13 +30,14 @@ class UnsplashPhoto:
     The attribution_text and attribution_html fields are ready to use
     directly in content pages without any URL construction needed.
     """
+
     # Core photo data
     id: str
-    description: Optional[str]
-    alt_description: Optional[str]
+    description: str | None
+    alt_description: str | None
 
     # Image URLs (multiple sizes: raw, full, regular, small, thumb)
-    urls: Dict[str, str]
+    urls: dict[str, str]
 
     # Dimensions
     width: int
@@ -46,7 +45,7 @@ class UnsplashPhoto:
 
     # Visual metadata
     color: str  # Dominant hex color for placeholders
-    blur_hash: Optional[str]  # BlurHash for progressive loading
+    blur_hash: str | None  # BlurHash for progressive loading
 
     # Attribution (REQUIRED by Unsplash API guidelines)
     photographer_name: str
@@ -70,12 +69,9 @@ def _get_access_key() -> str:
     return access_key
 
 
-def _get_headers() -> Dict[str, str]:
+def _get_headers() -> dict[str, str]:
     """Get the headers for Unsplash API requests."""
-    return {
-        "Accept-Version": "v1",
-        "Authorization": f"Client-ID {_get_access_key()}"
-    }
+    return {"Accept-Version": "v1", "Authorization": f"Client-ID {_get_access_key()}"}
 
 
 def _photo_to_dataclass(photo: dict) -> UnsplashPhoto:
@@ -114,13 +110,13 @@ def _photo_to_dataclass(photo: dict) -> UnsplashPhoto:
 @mcp.tool()
 async def search_photos(
     query: str,
-    page: Union[int, str] = 1,
-    per_page: Union[int, str] = 10,
+    page: int | str = 1,
+    per_page: int | str = 10,
     order_by: str = "relevant",
-    color: Optional[str] = None,
-    orientation: Optional[str] = None,
-    content_filter: str = "low"
-) -> List[UnsplashPhoto]:
+    color: str | None = None,
+    orientation: str | None = None,
+    content_filter: str = "low",
+) -> list[UnsplashPhoto]:
     """
     Search for photos on Unsplash by keyword.
 
@@ -180,7 +176,7 @@ async def search_photos(
                 f"{UNSPLASH_API_BASE}/search/photos",
                 params=params,
                 headers=_get_headers(),
-                timeout=30.0
+                timeout=30.0,
             )
             response.raise_for_status()
             data = response.json()
@@ -189,24 +185,30 @@ async def search_photos(
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 401:
-            raise ValueError("Invalid Unsplash API key. Check your UNSPLASH_ACCESS_KEY.")
+            raise ValueError(
+                "Invalid Unsplash API key. Check your UNSPLASH_ACCESS_KEY."
+            )
         elif e.response.status_code == 403:
-            raise ValueError("Rate limit exceeded. Unsplash allows 50 requests/hour in demo mode.")
+            raise ValueError(
+                "Rate limit exceeded. Unsplash allows 50 requests/hour in demo mode."
+            )
         else:
-            raise ValueError(f"Unsplash API error: {e.response.status_code} - {e.response.text}")
+            raise ValueError(
+                f"Unsplash API error: {e.response.status_code} - {e.response.text}"
+            )
     except httpx.TimeoutException:
         raise ValueError("Request timed out. Please try again.")
-    except Exception as e:
-        raise ValueError(f"Failed to search photos: {str(e)}")
+    except (httpx.RequestError, KeyError, TypeError, ValueError) as e:
+        raise ValueError(f"Failed to search photos: {e!s}") from e
 
 
 @mcp.tool()
 async def get_random_photos(
-    query: Optional[str] = None,
-    count: Union[int, str] = 1,
-    orientation: Optional[str] = None,
-    content_filter: str = "low"
-) -> List[UnsplashPhoto]:
+    query: str | None = None,
+    count: int | str = 1,
+    orientation: str | None = None,
+    content_filter: str = "low",
+) -> list[UnsplashPhoto]:
     """
     Get random photos from Unsplash, optionally filtered by keyword.
 
@@ -251,7 +253,7 @@ async def get_random_photos(
                 f"{UNSPLASH_API_BASE}/photos/random",
                 params=params,
                 headers=_get_headers(),
-                timeout=30.0
+                timeout=30.0,
             )
             response.raise_for_status()
             data = response.json()
@@ -264,15 +266,21 @@ async def get_random_photos(
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 401:
-            raise ValueError("Invalid Unsplash API key. Check your UNSPLASH_ACCESS_KEY.")
+            raise ValueError(
+                "Invalid Unsplash API key. Check your UNSPLASH_ACCESS_KEY."
+            )
         elif e.response.status_code == 403:
-            raise ValueError("Rate limit exceeded. Unsplash allows 50 requests/hour in demo mode.")
+            raise ValueError(
+                "Rate limit exceeded. Unsplash allows 50 requests/hour in demo mode."
+            )
         else:
-            raise ValueError(f"Unsplash API error: {e.response.status_code} - {e.response.text}")
+            raise ValueError(
+                f"Unsplash API error: {e.response.status_code} - {e.response.text}"
+            )
     except httpx.TimeoutException:
         raise ValueError("Request timed out. Please try again.")
-    except Exception as e:
-        raise ValueError(f"Failed to get random photos: {str(e)}")
+    except (httpx.RequestError, KeyError, TypeError, ValueError) as e:
+        raise ValueError(f"Failed to get random photos: {e!s}") from e
 
 
 @mcp.tool()
@@ -306,7 +314,7 @@ async def track_download(photo_id: str) -> str:
             response = await client.get(
                 f"{UNSPLASH_API_BASE}/photos/{photo_id}/download",
                 headers=_get_headers(),
-                timeout=30.0
+                timeout=30.0,
             )
             response.raise_for_status()
             data = response.json()
@@ -315,17 +323,23 @@ async def track_download(photo_id: str) -> str:
 
     except httpx.HTTPStatusError as e:
         if e.response.status_code == 401:
-            raise ValueError("Invalid Unsplash API key. Check your UNSPLASH_ACCESS_KEY.")
+            raise ValueError(
+                "Invalid Unsplash API key. Check your UNSPLASH_ACCESS_KEY."
+            )
         elif e.response.status_code == 404:
             raise ValueError(f"Photo not found: {photo_id}")
         elif e.response.status_code == 403:
-            raise ValueError("Rate limit exceeded. Unsplash allows 50 requests/hour in demo mode.")
+            raise ValueError(
+                "Rate limit exceeded. Unsplash allows 50 requests/hour in demo mode."
+            )
         else:
-            raise ValueError(f"Unsplash API error: {e.response.status_code} - {e.response.text}")
+            raise ValueError(
+                f"Unsplash API error: {e.response.status_code} - {e.response.text}"
+            )
     except httpx.TimeoutException:
         raise ValueError("Request timed out. Please try again.")
-    except Exception as e:
-        raise ValueError(f"Failed to track download: {str(e)}")
+    except (httpx.RequestError, KeyError, TypeError, ValueError) as e:
+        raise ValueError(f"Failed to track download: {e!s}") from e
 
 
 if __name__ == "__main__":
