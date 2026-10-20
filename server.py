@@ -24,7 +24,7 @@ UNSPLASH_API_BASE = "https://api.unsplash.com"
 mcp = FastMCP("Unsplash MCP Server")
 
 
-@mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
+@mcp.custom_route("/healthz", methods=["GET"], include_in_schema=False)
 async def health_check(_request: Request) -> Response:
     """Report that the HTTP server is accepting requests."""
     return JSONResponse({"status": "ok"})

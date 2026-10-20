@@ -71,7 +71,7 @@ fastmcp run server.py --transport http --host 0.0.0.0 --port "$PORT"
 ```
 
 The deployed endpoint will be `https://<your-service>.onrender.com/mcp`.
-Set Render's **Health Check Path** to `/health`. A successful check returns
+Set Render's **Health Check Path** to `/healthz`. A successful check returns
 HTTP 200 with `{"status":"ok"}`. This checks that the server is running; it
 does not make an Unsplash API request or consume API quota.
 Configure access control before publishing that URL: this server currently
