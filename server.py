@@ -11,6 +11,8 @@ from dataclasses import dataclass
 import httpx
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +22,12 @@ UNSPLASH_API_BASE = "https://api.unsplash.com"
 
 # Create the MCP server
 mcp = FastMCP("Unsplash MCP Server")
+
+
+@mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
+async def health_check(_request: Request) -> Response:
+    """Report that the HTTP server is accepting requests."""
+    return JSONResponse({"status": "ok"})
 
 
 @dataclass
